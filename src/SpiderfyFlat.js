@@ -1,15 +1,17 @@
 import Spiderfy from './Spiderfy';
 import { calcAngleDegrees, generateLegImage } from './utils/helpers';
+import { point, transformRotate, distance, destination } from '@turf/turf';
+
 
 class SpiderfyFlat extends Spiderfy {
-  _createSpiderfyLayers(layerId, features, clusterCoords) {
+  _createSpiderfyLayers(map, layerId, features, clusterCoords) {
     const { circleSpiralSwitchover, spiderLegsAreHidden } = this.options;
     const drawCircle = features.length < circleSpiralSwitchover;
     const points = drawCircle ? this._calculatePointsInCircle(features.length) 
       : this._calculatePointsInSpiral(features.length);
     const spiderLegs = !spiderLegsAreHidden && this._generateLegs(points, drawCircle);
     
-    this._drawFeaturesOnMap(points, spiderLegs, layerId, clusterCoords);
+    this._drawFeaturesOnMap(map, points, spiderLegs, layerId, clusterCoords);
   }
 
   _generateLegs(points, drawCircle) {
@@ -32,16 +34,32 @@ class SpiderfyFlat extends Spiderfy {
     return legs;
   }
 
-  _drawFeaturesOnMap(points, spiderLegs, layerId, coordinates) {
-    const { layout, paint } = this.clickedParentClusterStyle;
-    const { spiderLegsAreHidden, spiderLeavesLayout, spiderLeavesPaint } = this.options;
+  _drawFeaturesOnMap(map, points, spiderLegs, layerId, coordinates) {
+    const { spiderLegsAreHidden } = this.options;
 
     points.forEach((point, index) => {
+
+      var offsetToDegrees = (map, pointOffset, clusterCoords) => {
+        const scale = map.getScale();
+        const bearing = map.getBearing();
+        const offsetPoint = point([pointOffset[0] / scale, pointOffset[1] / scale]);
+        const rotatedOffset = transformRotate(offsetPoint, bearing, 'radians');
+        const destinationPoint = destination(clusterCoords, distance(originalPoint, rotatedOffset), rotatedOffset.geometry.coordinates);
+        return destinationPoint.coordinates
+      }
+      
+      circleCoordinates = offsetToDegrees(map, point, coordinates)
       const feature = {
         type: 'Feature',
         geometry: { type: 'Point', coordinates },
         properties: this.spiderifiedCluster?.leaves[index]?.properties || {},
       };
+
+      const circleFeature = {
+        type: 'Feature',
+        geometry: { type: 'Point', circleCoordinates },
+        properties: this.spiderifiedCluster?.leaves[index]?.properties || {},
+      }
 
       if (!spiderLegsAreHidden) {
         if (this.map.hasImage(`${layerId}-spiderfy-leg${index}`)) {
@@ -70,20 +88,36 @@ class SpiderfyFlat extends Spiderfy {
         id: `${layerId}-spiderfy-leaf${index}`,
         source: {
           type: 'geojson',
-          data: { type: 'FeatureCollection', features: [feature] },
+          data: { type: 'FeatureCollection', features: [circleFeature] },
         },
         type: 'symbol',
         layout: {
-          ...(spiderLeavesLayout),
-          ...(!spiderLeavesLayout ? layout : {}),
-          'icon-allow-overlap': true,
-          'icon-offset': point,
+          "icon-size": 0.25,
+          "icon-offset": [180, 0],
+          "icon-image": ["get", "icon"], // Use the icon property
+          "icon-allow-overlap": true,
+          "text-field": ["get", "title"],
+          "text-size": 11,
+          "text-offset": [-2, 0],
+          // Add other layout properties for text styling
         },
         paint: {
-          ...(spiderLeavesPaint),
-          ...(!spiderLeavesPaint ? paint : {}),
-          ...(!spiderLeavesPaint && !spiderLeavesLayout && paint['icon-color'] 
-            ? { 'icon-color': paint['icon-color'].toString() } : {})
+          "text-color": "#FFEBCD", // Example - adjust styling
+        },
+      });
+      this.activeSpiderfyLayerIds.push(`${layerId}-spiderfy-leaf${index}`);
+
+      this.map.addLayer({
+        id: `${layerId}-spiderfy-leaf${index}-circle`,
+        source: {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [circleFeature] },
+        },
+        type: 'circle',
+        paint: {
+          "circle-radius": 75,
+          "circle-opacity": 0.3,
+          "circle-color": "#FFE400",
         },
       });
       this.activeSpiderfyLayerIds.push(`${layerId}-spiderfy-leaf${index}`);

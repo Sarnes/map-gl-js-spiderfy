@@ -74,7 +74,7 @@ class Spiderfy {
         const clusterId = cluster.properties.cluster_id;
         source.getClusterLeaves(clusterId, maxLeaves, 0, (error, leaves) => {
           this.spiderifiedCluster = { cluster, leaves };
-          this._createSpiderfyLayers(layerId, leaves, cluster.geometry.coordinates);
+          this._createSpiderfyLayers(this.map, layerId, leaves, cluster.geometry.coordinates);
         });
       });
 
