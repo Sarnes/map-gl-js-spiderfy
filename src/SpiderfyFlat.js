@@ -1,6 +1,6 @@
 import Spiderfy from './Spiderfy';
 import { calcAngleDegrees, generateLegImage } from './utils/helpers';
-import { point, transformRotate, distance, destination } from '@turf/turf';
+import { point as PointFunc, transformRotate, distance, destination } from '@turf/turf';
 
 
 class SpiderfyFlat extends Spiderfy {
@@ -39,16 +39,15 @@ class SpiderfyFlat extends Spiderfy {
 
     points.forEach((point, index) => {
 
-      var offsetToDegrees = (map, pointOffset, clusterCoords) => {
-        const scale = map.getScale();
-        const bearing = map.getBearing();
-        const offsetPoint = point([pointOffset[0] / scale, pointOffset[1] / scale]);
-        const rotatedOffset = transformRotate(offsetPoint, bearing, 'radians');
-        const destinationPoint = destination(clusterCoords, distance(originalPoint, rotatedOffset), rotatedOffset.geometry.coordinates);
-        return destinationPoint.coordinates
+      var offsetToDegrees = (map, pointOffset, spiderLeg, clusterCoords) => {
+        const center = map.getCenter();
+        const scale =  1 / Math.cos(center.lat * Math.PI /  180) / Math.pow(2, map.getZoom());
+        const heightFactored = spiderLeg.img.height * (scale * 70)
+        const destinationPoint = destination(clusterCoords, heightFactored, spiderLeg.rotation);
+        return destinationPoint.geometry.coordinates
       }
       
-      circleCoordinates = offsetToDegrees(map, point, coordinates)
+      const circleCoordinates = offsetToDegrees(map, point, spiderLegs[index],coordinates)
       const feature = {
         type: 'Feature',
         geometry: { type: 'Point', coordinates },
@@ -57,7 +56,7 @@ class SpiderfyFlat extends Spiderfy {
 
       const circleFeature = {
         type: 'Feature',
-        geometry: { type: 'Point', circleCoordinates },
+        geometry: { type: 'Point', coordinates: circleCoordinates },
         properties: this.spiderifiedCluster?.leaves[index]?.properties || {},
       }
 
@@ -83,6 +82,20 @@ class SpiderfyFlat extends Spiderfy {
         this.activeSpiderfyLayerIds.push(`${layerId}-spiderfy-leg${index}`);
         this.map.moveLayer(`${layerId}-spiderfy-leg${index}`, layerId);
       }
+      this.map.addLayer({
+        id: `${layerId}-spiderfy-leaf${index}-circle`,
+        source: {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [circleFeature] },
+        },
+        type: 'circle',
+        paint: {
+          "circle-radius": 75,
+          "circle-opacity": 0.3,
+          "circle-color": "#FFE400",
+        },
+      });
+      this.activeSpiderfyLayerIds.push(`${layerId}-spiderfy-leaf${index}-circle`);
 
       this.map.addLayer({
         id: `${layerId}-spiderfy-leaf${index}`,
@@ -106,28 +119,35 @@ class SpiderfyFlat extends Spiderfy {
         },
       });
       this.activeSpiderfyLayerIds.push(`${layerId}-spiderfy-leaf${index}`);
-
       this.map.addLayer({
-        id: `${layerId}-spiderfy-leaf${index}-circle`,
+        id: `${layerId}-spiderfy-leaf${index}-market-icon`,
         source: {
           type: 'geojson',
           data: { type: 'FeatureCollection', features: [circleFeature] },
         },
-        type: 'circle',
-        paint: {
-          "circle-radius": 75,
-          "circle-opacity": 0.3,
-          "circle-color": "#FFE400",
+        type: 'symbol',
+        layout: {
+          "icon-image": ["get", "marketIcon"], // Use zoomIcon property
+          "icon-size": 0.3,
+          "icon-offset": [0, 150],
+          // Add other layout properties for styling
         },
       });
-      this.activeSpiderfyLayerIds.push(`${layerId}-spiderfy-leaf${index}`);
+      this.activeSpiderfyLayerIds.push(`${layerId}-spiderfy-leaf${index}-market-icon`);
     })
   }
 
   _updateSpiderifiedClusterCoords() {
     if (!this.spiderifiedCluster) return;
+    var coordinates;
     this.activeSpiderfyLayerIds.forEach((id) => {
-      const { coordinates } = this.spiderifiedCluster.cluster.geometry;
+      if (id.includes('market-icon')) return;
+      if (id.includes('leg')){
+        coordinates = this.spiderifiedCluster.cluster.geometry.coordinates
+      }else{
+        const sourceObject = this.map.getSource(id);
+        coordinates = sourceObject._data.features[0].geometry.coordinates
+      }
       const source = this.map.getSource(id);
       const feature = this.spiderifiedCluster?.leaves[id.split('-spiderfy-leaf')[1]];
 
