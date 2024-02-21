@@ -10,7 +10,6 @@
     "url": "git+ssh://git@github.com/nazka/map-gl-js-spiderfy.git"
   },
   "scripts": {
-    "dev": "webpack --watch --mode development --config webpack.config.js",
     "build": "webpack",
     "prepublish": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,8 +17,7 @@
   "dependencies": {
     "@babel/runtime": "^7.16.7",
     "@turf/turf": "^6.5.0",
-    "color": "^4.1.0",
-    "source-map-loader": "^5.0.0"
+    "color": "^4.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.16.7",
