@@ -92,7 +92,7 @@ class SpiderfyFlat extends Spiderfy {
         paint: {
           "circle-radius": 75,
           "circle-opacity": 0.3,
-          "circle-color": "#FFE400",
+          "circle-color": "#FFF9DD",
         },
       });
       this.activeSpiderfyLayerIds.push(`${layerId}-spiderfy-leaf${index}-circle`);

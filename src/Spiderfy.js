@@ -34,11 +34,12 @@ class Spiderfy {
       const layout = {};
       const paint = {};
 
-      Object.keys(layer.layout._values).forEach((key) => {
-        layout[key] = layer.layout._values[key]?.value?.value || layer.layout._values[key];
+      Object.keys(layer.layout).forEach((key) => {
+        layout[key] = this.map.getLayoutProperty(layerId, key);
       });
-      Object.keys(layer.paint._values).forEach((key) => {
-        paint[key] = layer.paint._values[key]?.value?.value || layer.paint._values[key];
+  
+      Object.keys(layer.paint).forEach((key) => {
+        paint[key] = this.map.getPaintProperty(layerId, key);
       });
 
       this.map.on('click', (e) => {
